@@ -40,6 +40,7 @@ const parallaxOffset = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
 const pickPointer = new THREE.Vector2();
 const cardHitboxes = [];
+const cardGlareMaterials = [];
 let hoveredCard = null;
 let needsHoverCheck = false;
 let selectedIndex = 0;
@@ -88,7 +89,21 @@ function pickCard(clientX, clientY) {
   pickPointer.set((clientX - rect.left) / rect.width * 2 - 1, -(clientY - rect.top) / rect.height * 2 + 1);
   camera.updateMatrixWorld(true);
   raycaster.setFromCamera(pickPointer, camera);
-  return raycaster.intersectObjects(selectedIndex === 0 ? cardHitboxes.filter(hitbox => hitbox.userData.card.userData.cameraIndex !== undefined) : cardHitboxes, false)[0]?.object.userData.card || null;
+  const hit = raycaster.intersectObjects(selectedIndex === 0 ? cardHitboxes.filter(hitbox => hitbox.userData.card.userData.cameraIndex !== undefined) : cardHitboxes, false)[0];
+  if (!hit) return null;
+  const object = hit.object.userData.card;
+  const glare = object.userData.glare;
+  if (glare) {
+    const local = object.worldToLocal(hit.point.clone());
+    const axes = glare.axes, box = object.geometry.boundingBox;
+    let u = (local[axes[0]]-box.min[axes[0]])/(box.max[axes[0]]-box.min[axes[0]])*2-1;
+    let v = (local[axes[1]]-box.min[axes[1]])/(box.max[axes[1]]-box.min[axes[1]])*2-1;
+    // Slide the highlight along the edge nearest the mouse.
+    if (Math.abs(u)>Math.abs(v)) u = Math.sign(u||1)*.98;
+    else v = Math.sign(v||1)*.98;
+    glare.target.set(u,v);
+  }
+  return object;
 }
 let latestPointer = null;
 viewport.addEventListener('pointermove', event => {
@@ -147,6 +162,12 @@ renderer.setAnimationLoop(now=>{
     camera.position.add(parallaxOffset);
   } else {
     pointer.set(0, 0);
+  }
+  for (const object of cardGlareMaterials) {
+    const glare = object.userData.glare;
+    const blend = 1-Math.exp(-12*dt);
+    glare.strength.value += ((object===hoveredCard && !transition ? 1 : 0)-glare.strength.value)*blend;
+    glare.pointer.value.lerp(glare.target,blend);
   }
   renderer.render(scene,camera);
   // Simple hitboxes keep hover tests fast even with dense Blender card meshes.
@@ -221,6 +242,19 @@ async function loadScene(){
       object.geometry.computeBoundingBox();
       const box = object.geometry.boundingBox;
       const size = box.getSize(new THREE.Vector3());
+      const axes = ['x','y','z'].sort((a,b)=>size[b]-size[a]).slice(0,2);
+      const glare = {axes, strength:{value:0}, pointer:{value:new THREE.Vector2(0,.98)},target:new THREE.Vector2(0,.98)};
+      object.userData.glare = glare;
+      cardGlareMaterials.push(object);
+      object.material.onBeforeCompile = shader => {
+        shader.uniforms.cardGlareStrength = glare.strength;
+        shader.uniforms.cardGlarePointer = glare.pointer;
+        shader.vertexShader = 'varying vec2 vCardGlareUv;\n'+shader.vertexShader;
+        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vCardGlareUv = vec2((position.'+axes[0]+' - '+box.min[axes[0]].toFixed(8)+') / '+size[axes[0]].toFixed(8)+', (position.'+axes[1]+' - '+box.min[axes[1]].toFixed(8)+') / '+size[axes[1]].toFixed(8)+') * 2.0 - 1.0;');
+        shader.fragmentShader = 'varying vec2 vCardGlareUv; uniform float cardGlareStrength; uniform vec2 cardGlarePointer;\n'+shader.fragmentShader;
+        shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n float cardEdge = smoothstep(0.91,0.99,max(abs(vCardGlareUv.x),abs(vCardGlareUv.y))); float cardHotspot = exp(-11.0*dot(vCardGlareUv-cardGlarePointer,vCardGlareUv-cardGlarePointer)); totalEmissiveRadiance += vec3(0.8,0.9,1.0) * cardEdge * cardHotspot * cardGlareStrength * 7.0;');
+      };
+      object.material.customProgramCacheKey = () => 'card-edge-glare-'+axes.join('')+box.min.toArray().join(',')+size.toArray().join(',');
       const center = box.getCenter(new THREE.Vector3());
       // A tiny minimum thickness makes picking the thin cards reliable from either side.
       size.max(new THREE.Vector3(.003, .003, .003));
