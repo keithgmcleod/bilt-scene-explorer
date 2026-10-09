@@ -55,10 +55,6 @@ window.addEventListener('pointermove', event => {
 });
 document.documentElement.addEventListener('pointerleave', () => pointerTarget.set(0, 0));
 window.addEventListener('blur', () => pointerTarget.set(0, 0));
-const hemisphere = new THREE.HemisphereLight(0xffffff,0x6a7462,2.5);
-scene.add(hemisphere);
-const key = new THREE.DirectionalLight(0xffffff,3);
-key.position.set(-3,6,4); scene.add(key);
 let renderer, transition = null, ready = false;
 try {
   renderer = new THREE.WebGLRenderer({antialias:true});
@@ -84,9 +80,7 @@ function fovFor(index) {
 }
 function setHoveredCard(object) {
   if (object === hoveredCard) return;
-  if (hoveredCard) hoveredCard.material.emissive.copy(hoveredCard.userData.originalEmissive);
   hoveredCard = object;
-  if (hoveredCard) hoveredCard.material.emissive.setHex(0x17384b);
   viewport.style.cursor = hoveredCard ? 'pointer' : 'default';
 }
 function pickCard(clientX, clientY) {
