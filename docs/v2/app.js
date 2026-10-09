@@ -206,7 +206,7 @@ async function loadScene(){
       object.geometry.computeBoundingBox();
       const center = object.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(object.matrixWorld);
       const direction = views[0].position.clone().sub(center).normalize();
-      const spotlight = new THREE.SpotLight(0xffffff, 80, 3, Math.PI/6, .8, 2);
+      const spotlight = new THREE.SpotLight(0xffffff, 2.5, 3, Math.PI/6, .8, 2);
       spotlight.name = 'Card spotlight ' + object.name;
       spotlight.position.copy(center).addScaledVector(direction,.7).add(new THREE.Vector3(.15,.35,0));
       spotlight.target.position.copy(center);
