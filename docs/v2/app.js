@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
-import { HDRLoader } from './HDRLoader.js';
 
 const viewport = document.querySelector('#viewport');
 const status = document.querySelector('#status');
@@ -169,21 +168,12 @@ async function loadScene(){
     const bytes=await new Response(new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
     const gltf=await new GLTFLoader().parseAsync(bytes,new URL('./assets/',location.href).href);
     loadingText.textContent='Applying Blender materials…';
-    const [grid, environment] = await Promise.all([
-      new THREE.TextureLoader().loadAsync('./assets/texture_02.png'),
-      new HDRLoader().setDataType(THREE.FloatType).loadAsync('./assets/fireplace-edited.hdr')
-    ]);
+    const grid = await new THREE.TextureLoader().loadAsync('./assets/texture_02.png');
     grid.colorSpace = THREE.SRGBColorSpace;
     grid.wrapS = grid.wrapT = THREE.RepeatWrapping;
     grid.flipY = true;
     grid.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    environment.mapping = THREE.EquirectangularReflectionMapping;
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromEquirectangular(environment).texture;
-    scene.environmentIntensity = 1.35;
-    scene.environmentRotation.set(0, -Math.PI/2, 0);
-    environment.dispose();
-    pmrem.dispose();
+    scene.environment = null;
     gltf.scene.traverse(object => {
       if (!object.isMesh) return;
       if (/^BLUE[0-9]*$/.test(normalizeName(object.name))) {
@@ -210,6 +200,18 @@ async function loadScene(){
     });
     scene.add(gltf.scene);
     gltf.scene.updateMatrixWorld(true);
+    // Aim a dedicated white spotlight at every Blender card.
+    gltf.scene.traverse(object => {
+      if (!object.isMesh || !/^BLUE[0-9]*$/.test(normalizeName(object.name))) return;
+      object.geometry.computeBoundingBox();
+      const center = object.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(object.matrixWorld);
+      const direction = views[0].position.clone().sub(center).normalize();
+      const spotlight = new THREE.SpotLight(0xffffff, 80, 3, Math.PI/6, .8, 2);
+      spotlight.name = 'Card spotlight ' + object.name;
+      spotlight.position.copy(center).addScaledVector(direction,.7).add(new THREE.Vector3(.15,.35,0));
+      spotlight.target.position.copy(center);
+      scene.add(spotlight,spotlight.target);
+    });
     gltf.scene.traverse(object => {
       if (!object.isMesh || !/^BLUE[0-9]*$/.test(normalizeName(object.name))) return;
       object.userData.cameraIndex = cardCameraMap.get(normalizeName(object.name));
