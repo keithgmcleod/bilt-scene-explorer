@@ -17,6 +17,20 @@ const sourceCameras = await cameraResponse.json();
 const cardCameraMap = new Map([['BLUE002',1],['BLUE001',2],['BLUE003',3]]);
 const normalizeName = name => name.toUpperCase().replace(/[._]/g,'');
 const overviewButton = document.querySelector('#overview');
+const cardInformation = [null,
+  {name:'BILT Obsidian',description:'Discover BILT Obsidian from a closer perspective.'},
+  {name:'BILT Palladium',description:'Discover BILT Palladium from a closer perspective.'},
+  {name:'BILT Blue',description:'Discover BILT Blue from a closer perspective.'}
+];
+function updateCardInformation(index) {
+  const information = cardInformation[index];
+  document.querySelector('#collection-intro').hidden = Boolean(information);
+  document.querySelector('#card-info').hidden = !information;
+  if (information) {
+    document.querySelector('#card-title').textContent = information.name;
+    document.querySelector('#card-description').textContent = information.description;
+  }
+}
 // Blender Z-up to the glTF export's Y-up. Preserve world rotation and discard camera object scale.
 const basis = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
 const views = sourceCameras.map(({name,matrix}) => {
@@ -76,7 +90,7 @@ function resize(){
 }
 new ResizeObserver(resize).observe(viewport); resize();
 function fovFor(index) {
-  return THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(sourceCameras[index].angle/2)/Math.max(camera.aspect,1)));
+  return THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(sourceCameras[index].angle/2)/Math.max(camera.aspect,.55)));
 }
 function setHoveredCard(object) {
   if (object === hoveredCard) return;
@@ -109,6 +123,7 @@ function moveToCamera(index){
   // Click the selected card again to return to camera one.
   if (index !== 0 && index === selectedIndex) index = 0;
   selectedIndex = index;
+  updateCardInformation(index);
   const target = views[index];
   setHoveredCard(null);
   // Start from the rendered pose, including its mouse tilt, for seamless interruption.
