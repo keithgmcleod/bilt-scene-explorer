@@ -8,7 +8,7 @@ const loadingText = document.querySelector('#loading-text');
 const progress = document.querySelector('#progress');
 const cards = [...document.querySelectorAll('[data-camera]')];
 const durationInput = document.querySelector('#duration');
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const motionToggle = document.querySelector('#animate-camera');
 const sourceCameras = [
   { name:'Camera.001', matrix:[[0.1950554848,0,0,0],[0,-8.526146e-9,-0.1950554848,-0.8434450626],[0,0.1950554848,-8.526146e-9,1.0863890648],[0,0,0,1]] },
   { name:'Camera.002', matrix:[[0.1950554848,2.8134735e-17,1.0382594e-17,-0.4526156783],[-1.0382596e-17,0.1267075688,-0.1482964307,-0.4114981294],[-2.8134735e-17,0.1482964307,0.1267075688,1.3515282869],[0,0,0,1]] }
@@ -33,6 +33,11 @@ const pointer = new THREE.Vector2();
 const tiltQuaternion = new THREE.Quaternion();
 const tiltEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 const parallaxOffset = new THREE.Vector3();
+const raycaster = new THREE.Raycaster();
+const pickPointer = new THREE.Vector2();
+const cardHitboxes = [];
+let hoveredCard = null;
+let needsHoverCheck = false;
 let selectedIndex = 0;
 let previousFrame = performance.now();
 window.addEventListener('pointermove', event => {
@@ -69,17 +74,46 @@ function resize(){
   camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe(viewport); resize();
+function setHoveredCard(object) {
+  if (object === hoveredCard) return;
+  if (hoveredCard) hoveredCard.material.emissive.copy(hoveredCard.userData.originalEmissive);
+  hoveredCard = object;
+  if (hoveredCard) hoveredCard.material.emissive.setHex(0x17384b);
+  viewport.style.cursor = hoveredCard ? 'pointer' : 'default';
+}
+function pickCard(clientX, clientY) {
+  if (!ready) return null;
+  const rect = viewport.getBoundingClientRect();
+  pickPointer.set((clientX - rect.left) / rect.width * 2 - 1, -(clientY - rect.top) / rect.height * 2 + 1);
+  camera.updateMatrixWorld(true);
+  raycaster.setFromCamera(pickPointer, camera);
+  return raycaster.intersectObjects(cardHitboxes, false)[0]?.object.userData.card || null;
+}
+let latestPointer = null;
+viewport.addEventListener('pointermove', event => {
+  latestPointer = {x: event.clientX, y: event.clientY};
+  needsHoverCheck = true;
+});
+viewport.addEventListener('pointerleave', () => {
+  latestPointer = null;
+  setHoveredCard(null);
+});
+viewport.addEventListener('click', event => {
+  const card = pickCard(event.clientX, event.clientY);
+  if (card) moveToNextCamera();
+});
 function moveToNextCamera(){
   if(!ready) return;
   // Every card cues the other camera, including when reversing an ongoing flight.
   const index = (selectedIndex + 1) % views.length;
   selectedIndex = index;
   const target = views[index];
+  setHoveredCard(null);
   // Start from the rendered pose, including its mouse tilt, for seamless interruption.
   basePosition.copy(camera.position);
   baseQuaternion.copy(camera.quaternion);
   pointer.set(0, 0);
-  transition = {start:performance.now(),duration:reducedMotion.matches?0:Number(durationInput.value)*1000,fromPosition:camera.position.clone(),fromQuaternion:camera.quaternion.clone(),target};
+  transition = {start:performance.now(),duration:motionToggle.checked?Number(durationInput.value)*1000:0,fromPosition:camera.position.clone(),fromQuaternion:camera.quaternion.clone(),target};
   cards.forEach((card,i)=>{card.classList.toggle('active',i===index);card.setAttribute('aria-pressed',String(i===index));});
   status.textContent = `Moving to ${target.name}`;
 }
@@ -99,7 +133,7 @@ renderer.setAnimationLoop(now=>{
   camera.position.copy(basePosition);
   camera.quaternion.copy(baseQuaternion);
   // Keep the camera flight anchored to the Blender poses, then ease mouse movement back in.
-  if (ready && !moving && !reducedMotion.matches) {
+  if (ready && !moving && motionToggle.checked) {
     pointer.lerp(pointerTarget, 1 - Math.exp(-5 * dt));
     tiltEuler.set(-pointer.y * .018, -pointer.x * .025, -pointer.x * .003, 'YXZ');
     tiltQuaternion.setFromEuler(tiltEuler);
@@ -110,6 +144,11 @@ renderer.setAnimationLoop(now=>{
     pointer.set(0, 0);
   }
   renderer.render(scene,camera);
+  // Simple hitboxes keep hover tests fast even with dense Blender card meshes.
+  if (latestPointer && (needsHoverCheck || moving)) {
+    setHoveredCard(pickCard(latestPointer.x, latestPointer.y));
+    needsHoverCheck = false;
+  }
 });
 async function loadScene(){
   document.querySelector('#retry').hidden=true;
@@ -124,6 +163,23 @@ async function loadScene(){
     const bytes=await new Response(new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
     const gltf=await new GLTFLoader().parseAsync(bytes,new URL('./assets/',location.href).href);
     scene.add(gltf.scene);
+    gltf.scene.updateMatrixWorld(true);
+    gltf.scene.traverse(object => {
+      if (!object.isMesh || !/^BLUE(?:[._]\d+)?$/.test(object.name)) return;
+      object.material = object.material.clone();
+      object.userData.originalEmissive = object.material.emissive.clone();
+      object.geometry.computeBoundingBox();
+      const box = object.geometry.boundingBox;
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      // A tiny minimum thickness makes picking the thin cards reliable from either side.
+      size.max(new THREE.Vector3(.003, .003, .003));
+      const hitbox = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
+      hitbox.matrixAutoUpdate = false;
+      hitbox.matrixWorld.copy(object.matrixWorld).multiply(new THREE.Matrix4().makeTranslation(center.x, center.y, center.z));
+      hitbox.userData.card = object;
+      cardHitboxes.push(hitbox);
+    });
     ready=true;cards.forEach(card=>card.disabled=false);loading.hidden=true;
     status.textContent='Viewing Camera.001';
   }catch(error){console.error(error);loadingText.textContent='The scene could not load. Please try again.';document.querySelector('#retry').hidden=false;status.textContent='Scene loading failed';}
