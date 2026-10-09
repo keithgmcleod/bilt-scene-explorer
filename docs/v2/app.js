@@ -254,7 +254,7 @@ async function loadScene(){
         shader.fragmentShader = 'varying vec2 vCardGlareUv; uniform float cardGlareStrength; uniform vec2 cardGlarePointer;\n'+shader.fragmentShader;
         shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n float cardEdge = smoothstep(0.91,0.99,max(abs(vCardGlareUv.x),abs(vCardGlareUv.y))); float cardHotspot = exp(-11.0*dot(vCardGlareUv-cardGlarePointer,vCardGlareUv-cardGlarePointer)); totalEmissiveRadiance += vec3(0.8,0.9,1.0) * cardEdge * cardHotspot * cardGlareStrength * 7.0;');
       };
-      object.material.customProgramCacheKey = () => 'card-edge-glare-'+axes.join('')+box.min.toArray().join(',')+size.toArray().join(',');
+      object.material.customProgramCacheKey = () => 'card-edge-glare-'+object.uuid+'-'+axes.join('')+box.min.toArray().join(',')+size.toArray().join(',');
       const center = box.getCenter(new THREE.Vector3());
       // A tiny minimum thickness makes picking the thin cards reliable from either side.
       size.max(new THREE.Vector3(.003, .003, .003));
