@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { HDRLoader } from './HDRLoader.js';
 
 const viewport = document.querySelector('#viewport');
 const status = document.querySelector('#status');
@@ -174,13 +175,21 @@ async function loadScene(){
     grid.flipY = true;
     grid.anisotropy = renderer.capabilities.getMaxAnisotropy();
     scene.environment = null;
+    const highlightHdr = await new HDRLoader().setDataType(THREE.FloatType).loadAsync('./assets/fireplace-edited.hdr');
+    highlightHdr.mapping = THREE.EquirectangularReflectionMapping;
+    const highlightPmrem = new THREE.PMREMGenerator(renderer);
+    const highlightEnvironment = highlightPmrem.fromEquirectangular(highlightHdr).texture;
+    highlightHdr.dispose();
+    highlightPmrem.dispose();
     gltf.scene.traverse(object => {
       if (!object.isMesh) return;
       if (/^BLUE[0-9]*$/.test(normalizeName(object.name))) {
         object.material = new THREE.MeshPhysicalMaterial({
           name:'EDGE BLUE', color:new THREE.Color(.8,.8,.8),
           metalness:1, roughness:.318605095, clearcoat:1,
-          clearcoatRoughness:0, ior:1.5, side:THREE.DoubleSide
+          clearcoatRoughness:0, ior:1.5, side:THREE.DoubleSide,
+          envMap:highlightEnvironment, envMapIntensity:.12,
+          envMapRotation:new THREE.Euler(0,-Math.PI/2,0)
         });
       } else if (/^(PLANE|CUBE)[0-9]*$/.test(normalizeName(object.name))) {
         object.material = new THREE.MeshStandardMaterial({
