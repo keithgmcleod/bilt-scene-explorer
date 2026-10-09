@@ -69,10 +69,10 @@ function resize(){
   camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe(viewport); resize();
-function moveTo(index){
+function moveToNextCamera(){
   if(!ready) return;
-  // Clicking the current view cues the next camera; the other card selects its own view.
-  if(index === selectedIndex) index = (index + 1) % views.length;
+  // Every card cues the other camera, including when reversing an ongoing flight.
+  const index = (selectedIndex + 1) % views.length;
   selectedIndex = index;
   const target = views[index];
   // Start from the rendered pose, including its mouse tilt, for seamless interruption.
@@ -83,7 +83,7 @@ function moveTo(index){
   cards.forEach((card,i)=>{card.classList.toggle('active',i===index);card.setAttribute('aria-pressed',String(i===index));});
   status.textContent = `Moving to ${target.name}`;
 }
-cards.forEach(card=>card.addEventListener('click',()=>moveTo(Number(card.dataset.camera))));
+cards.forEach(card=>card.addEventListener('click',moveToNextCamera));
 durationInput.addEventListener('input',()=>document.querySelector('#seconds').textContent=`${Number(durationInput.value).toFixed(1)}s`);
 renderer.setAnimationLoop(now=>{
   const dt = Math.min(Math.max((now - previousFrame) / 1000, 0), .1);
