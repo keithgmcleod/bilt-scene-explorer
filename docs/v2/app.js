@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
-import { EXRLoader } from './EXRLoader.js';
+import { HDRLoader } from './HDRLoader.js';
 
 const viewport = document.querySelector('#viewport');
 const status = document.querySelector('#status');
@@ -177,19 +177,12 @@ async function loadScene(){
     loadingText.textContent='Applying Blender materials…';
     const [grid, environment] = await Promise.all([
       new THREE.TextureLoader().loadAsync('./assets/texture_02.png'),
-      new EXRLoader().setDataType(THREE.FloatType).loadAsync('./assets/environment.exr')
+      new HDRLoader().setDataType(THREE.FloatType).loadAsync('./assets/fireplace_4k.hdr')
     ]);
     grid.colorSpace = THREE.SRGBColorSpace;
     grid.wrapS = grid.wrapT = THREE.RepeatWrapping;
     grid.flipY = true;
     grid.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    // Easy HDRI uses saturation zero in the Blender world.
-    const pixels = environment.image.data;
-    for (let i=0; i<pixels.length; i+=4) {
-      const gray = pixels[i]*.2126 + pixels[i+1]*.7152 + pixels[i+2]*.0722;
-      pixels[i] = pixels[i+1] = pixels[i+2] = gray;
-    }
-    environment.needsUpdate = true;
     environment.mapping = THREE.EquirectangularReflectionMapping;
     const pmrem = new THREE.PMREMGenerator(renderer);
     scene.environment = pmrem.fromEquirectangular(environment).texture;
