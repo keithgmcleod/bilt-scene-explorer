@@ -185,6 +185,7 @@ async function loadScene(){
       } else if (/^(PLANE|CUBE)[0-9]*$/.test(normalizeName(object.name))) {
         object.material = new THREE.MeshStandardMaterial({
           name:object.name === 'Cube' ? 'GRID.002' : 'GRID.001',
+          color:/^CUBE[0-9]*$/.test(normalizeName(object.name)) ? 0x24282c : 0xffffff,
           map:grid, metalness:0, roughness:.5, side:THREE.DoubleSide
         });
         // Blender Object coordinates → Mapping scale 10 → flat image projection.
