@@ -171,7 +171,7 @@ async function loadScene(){
     loadingText.textContent='Applying Blender materials…';
     const [grid, environment] = await Promise.all([
       new THREE.TextureLoader().loadAsync('./assets/texture_02.png'),
-      new HDRLoader().setDataType(THREE.FloatType).loadAsync('./assets/fireplace_4k.hdr')
+      new HDRLoader().setDataType(THREE.FloatType).loadAsync('./assets/fireplace-edited.hdr')
     ]);
     grid.colorSpace = THREE.SRGBColorSpace;
     grid.wrapS = grid.wrapT = THREE.RepeatWrapping;
@@ -180,6 +180,7 @@ async function loadScene(){
     environment.mapping = THREE.EquirectangularReflectionMapping;
     const pmrem = new THREE.PMREMGenerator(renderer);
     scene.environment = pmrem.fromEquirectangular(environment).texture;
+    scene.environmentIntensity = 1.35;
     scene.environmentRotation.set(0, -Math.PI/2, 0);
     environment.dispose();
     pmrem.dispose();
