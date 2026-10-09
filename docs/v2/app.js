@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { EXRLoader } from './EXRLoader.js';
 
 const viewport = document.querySelector('#viewport');
 const status = document.querySelector('#status');
@@ -173,6 +174,52 @@ async function loadScene(){
     loadingText.textContent='Preparing geometry…';
     const bytes=await new Response(new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
     const gltf=await new GLTFLoader().parseAsync(bytes,new URL('./assets/',location.href).href);
+    loadingText.textContent='Applying Blender materials…';
+    const [grid, environment] = await Promise.all([
+      new THREE.TextureLoader().loadAsync('./assets/texture_02.png'),
+      new EXRLoader().setDataType(THREE.FloatType).loadAsync('./assets/environment.exr')
+    ]);
+    grid.colorSpace = THREE.SRGBColorSpace;
+    grid.wrapS = grid.wrapT = THREE.RepeatWrapping;
+    grid.flipY = true;
+    grid.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    // Easy HDRI uses saturation zero in the Blender world.
+    const pixels = environment.image.data;
+    for (let i=0; i<pixels.length; i+=4) {
+      const gray = pixels[i]*.2126 + pixels[i+1]*.7152 + pixels[i+2]*.0722;
+      pixels[i] = pixels[i+1] = pixels[i+2] = gray;
+    }
+    environment.needsUpdate = true;
+    environment.mapping = THREE.EquirectangularReflectionMapping;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(environment).texture;
+    scene.environmentRotation.set(0, -Math.PI/2, 0);
+    environment.dispose();
+    pmrem.dispose();
+    gltf.scene.traverse(object => {
+      if (!object.isMesh) return;
+      if (/^BLUE[0-9]*$/.test(normalizeName(object.name))) {
+        object.material = new THREE.MeshPhysicalMaterial({
+          name:'EDGE BLUE', color:new THREE.Color(.8,.8,.8),
+          metalness:1, roughness:.318605095, clearcoat:1,
+          clearcoatRoughness:0, ior:1.5, side:THREE.DoubleSide
+        });
+      } else if (/^(PLANE|CUBE)[0-9]*$/.test(normalizeName(object.name))) {
+        object.material = new THREE.MeshStandardMaterial({
+          name:object.name === 'Cube' ? 'GRID.002' : 'GRID.001',
+          map:grid, metalness:0, roughness:.5, side:THREE.DoubleSide
+        });
+        // Blender Object coordinates → Mapping scale 10 → flat image projection.
+        // glTF local axes are (Blender X, Blender Z, -Blender Y).
+        const position = object.geometry.attributes.position;
+        const uv = new Float32Array(position.count*2);
+        for (let i=0; i<position.count; i++) {
+          uv[i*2] = position.getX(i)*10;
+          uv[i*2+1] = -position.getZ(i)*10;
+        }
+        object.geometry.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+      }
+    });
     scene.add(gltf.scene);
     gltf.scene.updateMatrixWorld(true);
     gltf.scene.traverse(object => {
