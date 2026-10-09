@@ -94,7 +94,7 @@ function pickCard(clientX, clientY) {
   pickPointer.set((clientX - rect.left) / rect.width * 2 - 1, -(clientY - rect.top) / rect.height * 2 + 1);
   camera.updateMatrixWorld(true);
   raycaster.setFromCamera(pickPointer, camera);
-  return raycaster.intersectObjects(cardHitboxes, false)[0]?.object.userData.card || null;
+  return raycaster.intersectObjects(selectedIndex === 0 ? cardHitboxes.filter(hitbox => hitbox.userData.card.userData.cameraIndex !== undefined) : cardHitboxes, false)[0]?.object.userData.card || null;
 }
 let latestPointer = null;
 viewport.addEventListener('pointermove', event => {
@@ -107,7 +107,7 @@ viewport.addEventListener('pointerleave', () => {
 });
 viewport.addEventListener('click', event => {
   const card = pickCard(event.clientX, event.clientY);
-  if (card) moveToCamera(card.userData.cameraIndex);
+  if (card) moveToCamera(selectedIndex === 0 ? card.userData.cameraIndex : 0);
 });
 function moveToCamera(index){
   if(!ready) return;
@@ -176,7 +176,7 @@ async function loadScene(){
     scene.add(gltf.scene);
     gltf.scene.updateMatrixWorld(true);
     gltf.scene.traverse(object => {
-      if (!object.isMesh || !cardCameraMap.has(normalizeName(object.name))) return;
+      if (!object.isMesh || !/^BLUE[0-9]*$/.test(normalizeName(object.name))) return;
       object.userData.cameraIndex = cardCameraMap.get(normalizeName(object.name));
       object.material = object.material.clone();
       object.userData.originalEmissive = object.material.emissive.clone();
