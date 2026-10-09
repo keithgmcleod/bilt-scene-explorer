@@ -165,7 +165,8 @@ async function loadScene(){
     scene.add(gltf.scene);
     gltf.scene.updateMatrixWorld(true);
     gltf.scene.traverse(object => {
-      if (!object.isMesh || !/^BLUE(?:[._]\d+)?$/.test(object.name)) return;
+      // GLTFLoader removes dots from Blender names: BLUE.002 becomes BLUE002.
+      if (!object.isMesh || !/^BLUE(?:[._]?\d+)?$/.test(object.name)) return;
       object.material = object.material.clone();
       object.userData.originalEmissive = object.material.emissive.clone();
       object.geometry.computeBoundingBox();
