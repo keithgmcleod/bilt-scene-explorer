@@ -56,6 +56,7 @@ const raycaster = new THREE.Raycaster();
 const pickPointer = new THREE.Vector2();
 const cardHitboxes = [];
 const cardSpotlights = [];
+const cameraFocusCards = new Map();
 let hoveredCard = null;
 let needsHoverCheck = false;
 let selectedIndex = 0;
@@ -174,7 +175,7 @@ renderer.setAnimationLoop(now=>{
   for (const {card,light} of cardSpotlights) {
     const active = selectedIndex === 0
       ? !moving && card === hoveredCard
-      : card.userData.cameraIndex === selectedIndex;
+      : card === cameraFocusCards.get(selectedIndex);
     const targetIntensity = active ? 1.8 : 0;
     light.intensity = THREE.MathUtils.lerp(light.intensity, targetIntensity, 1 - Math.exp(-12 * dt));
     if (!active && light.intensity < .001) light.intensity = 0;
@@ -264,6 +265,13 @@ async function loadScene(){
       hitbox.matrixWorld.copy(object.matrixWorld).multiply(new THREE.Matrix4().makeTranslation(center.x, center.y, center.z));
       hitbox.userData.card = object;
       cardHitboxes.push(hitbox);
+    });
+    // Isolated cameras can show separate copies of the overview cards.
+    views.slice(1).forEach((view, offset) => {
+      const index = offset + 1;
+      raycaster.set(view.position, new THREE.Vector3(0,0,-1).applyQuaternion(view.quaternion));
+      const focus = raycaster.intersectObjects(cardHitboxes, false)[0]?.object.userData.card;
+      cameraFocusCards.set(index, focus || cardSpotlights.find(({card}) => card.userData.cameraIndex === index)?.card);
     });
     ready=true;cards.forEach(card=>card.disabled=false);loading.hidden=true;
     overviewButton.disabled = false;
