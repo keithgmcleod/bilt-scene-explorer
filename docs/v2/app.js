@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { HDRLoader } from './HDRLoader.js';
+import { RectAreaLightUniformsLib } from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/lights/RectAreaLightUniformsLib.js';
+RectAreaLightUniformsLib.init();
 
 const viewport = document.querySelector('#viewport');
 const status = document.querySelector('#status');
@@ -213,10 +215,9 @@ renderer.setAnimationLoop(now=>{
       const reflected = normal.clone().multiplyScalar(2 * normal.dot(toCamera)).sub(toCamera).normalize();
       const across = new THREE.Vector3(1,0,0).transformDirection(card.matrixWorld);
       light.position.copy(center).addScaledVector(reflected,.55).addScaledVector(across,.04);
-      light.angle = Math.PI/4;
-      light.penumbra = 1;
+      light.lookAt(center);
     }
-    const targetIntensity = isObsidian ? (active ? .35 : .035) : (active ? 1.8 : 0);
+    const targetIntensity = isObsidian ? (active ? .8 : .08) : (active ? 1.8 : 0);
     // Give overview hover a soft build-up and a longer ambient tail.
     const fadeSpeed = selectedIndex === 0 ? (active ? 2.2 : 1.2) : (active ? 1.1 : 5);
     light.intensity = THREE.MathUtils.lerp(light.intensity, targetIntensity, 1 - Math.exp(-fadeSpeed * dt));
@@ -371,6 +372,13 @@ async function loadScene(){
       replacement.scale.setScalar(originalBounds.getSize(new THREE.Vector3()).x / obsidianSize.x);
       originalCard.material.visible = false;
       originalCard.add(replacement);
+    }
+    for (const entry of cardSpotlights) {
+      if (!obsidianCards.has(entry.card)) continue;
+      scene.remove(entry.light, entry.light.target);
+      entry.light = new THREE.RectAreaLight(0xffffff, .08, .4, .25);
+      entry.light.name = 'Obsidian softbox';
+      scene.add(entry.light);
     }
     ready=true;cards.forEach(card=>card.disabled=false);loading.hidden=true;
     overviewButton.disabled = false;
