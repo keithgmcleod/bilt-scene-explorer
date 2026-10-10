@@ -349,6 +349,7 @@ async function loadScene(){
         });
       });
       replacement.add(model);
+      replacement.rotation.y = Math.PI;
       const originalBounds = originalCard.geometry.boundingBox;
       replacement.position.copy(originalBounds.getCenter(new THREE.Vector3()));
       replacement.scale.setScalar(originalBounds.getSize(new THREE.Vector3()).x / obsidianSize.x);
