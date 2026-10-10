@@ -202,7 +202,8 @@ renderer.setAnimationLoop(now=>{
     const active = selectedIndex === 0
       ? !moving && card === hoveredCard
       : card === cameraFocusCards.get(selectedIndex);
-    const targetIntensity = active ? 1.8 : 0;
+    const isObsidian = card.userData.cameraIndex === 1 || card === cameraFocusCards.get(1);
+    const targetIntensity = active ? (isObsidian ? 4.5 : 1.8) : 0;
     // Give overview hover a soft build-up and a longer ambient tail.
     const fadeSpeed = selectedIndex === 0 ? (active ? 2.2 : 1.2) : (active ? 1.1 : 5);
     light.intensity = THREE.MathUtils.lerp(light.intensity, targetIntensity, 1 - Math.exp(-fadeSpeed * dt));
