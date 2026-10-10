@@ -179,7 +179,7 @@ renderer.setAnimationLoop(now=>{
       : card === cameraFocusCards.get(selectedIndex);
     const targetIntensity = active ? 1.8 : 0;
     // Give overview hover a soft build-up and a longer ambient tail.
-    const fadeSpeed = selectedIndex === 0 ? (active ? 2.2 : 1.2) : 5;
+    const fadeSpeed = selectedIndex === 0 ? (active ? 2.2 : 1.2) : (active ? 1.1 : 5);
     light.intensity = THREE.MathUtils.lerp(light.intensity, targetIntensity, 1 - Math.exp(-fadeSpeed * dt));
     if (!active && light.intensity < .001) light.intensity = 0;
   }
