@@ -188,6 +188,10 @@ renderer.setAnimationLoop(now=>{
     overviewSpotlight.intensity = THREE.MathUtils.lerp(overviewSpotlight.intensity, targetIntensity, 1 - Math.exp(-2.2 * dt));
     if (targetIntensity === 0 && overviewSpotlight.intensity < .001) overviewSpotlight.intensity = 0;
   }
+  const isolatedPalladium = cameraFocusCards.get(2);
+  if (isolatedPalladium && isolatedPalladium.userData.cameraIndex === undefined) {
+    isolatedPalladium.visible = selectedIndex !== 0;
+  }
   renderer.render(scene,camera);
 });
 async function loadScene(){
