@@ -55,6 +55,7 @@ const parallaxOffset = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
 const pickPointer = new THREE.Vector2();
 const cardHitboxes = [];
+const cardSpotlights = [];
 let hoveredCard = null;
 let needsHoverCheck = false;
 let selectedIndex = 0;
@@ -164,12 +165,21 @@ renderer.setAnimationLoop(now=>{
   } else {
     pointer.set(0, 0);
   }
-  renderer.render(scene,camera);
   // Simple hitboxes keep hover tests fast even with dense Blender card meshes.
-  if (latestPointer && (needsHoverCheck || moving)) {
-    setHoveredCard(pickCard(latestPointer.x, latestPointer.y));
+  if (latestPointer) {
+    setHoveredCard(moving && selectedIndex === 0 ? null : pickCard(latestPointer.x, latestPointer.y));
     needsHoverCheck = false;
   }
+  // Overview lights only the hovered mesh; close-ups light only their selected card.
+  for (const {card,light} of cardSpotlights) {
+    const active = selectedIndex === 0
+      ? !moving && card === hoveredCard
+      : card.userData.cameraIndex === selectedIndex;
+    const targetIntensity = active ? 1.8 : 0;
+    light.intensity = THREE.MathUtils.lerp(light.intensity, targetIntensity, 1 - Math.exp(-12 * dt));
+    if (!active && light.intensity < .001) light.intensity = 0;
+  }
+  renderer.render(scene,camera);
 });
 async function loadScene(){
   document.querySelector('#retry').hidden=true;
@@ -231,11 +241,12 @@ async function loadScene(){
       object.geometry.computeBoundingBox();
       const center = object.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(object.matrixWorld);
       const direction = views[0].position.clone().sub(center).normalize();
-      const spotlight = new THREE.SpotLight(0xffffff, 1.8, 3, Math.PI/10, .5, 2);
+      const spotlight = new THREE.SpotLight(0xffffff, 0, 3, Math.PI/10, .5, 2);
       spotlight.name = 'Card spotlight ' + object.name;
       spotlight.position.copy(center).addScaledVector(direction,.7).add(new THREE.Vector3(.15,.35,0));
       spotlight.target.position.copy(center);
       scene.add(spotlight,spotlight.target);
+      cardSpotlights.push({card:object,light:spotlight});
     });
     gltf.scene.traverse(object => {
       if (!object.isMesh || !/^BLUE[0-9]*$/.test(normalizeName(object.name))) return;
