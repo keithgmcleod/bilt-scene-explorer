@@ -106,13 +106,19 @@ function resize(){
   const {width,height} = viewport.getBoundingClientRect();
   renderer.setSize(width,height);
   camera.aspect = width/height;
+  if (matchMedia('(min-width:701px)').matches) {
+    camera.setViewOffset(width,height,-width*.16,0,width,height);
+  } else {
+    camera.clearViewOffset();
+  }
   // Match Blender's horizontal sensor fit on wide screens, with a minimum vertical view on mobile.
   camera.fov = fovFor(selectedIndex);
   camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe(viewport); resize();
 function fovFor(index) {
-  return THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(sourceCameras[index].angle/2)/Math.max(camera.aspect,.55)));
+  const stageAspect = camera.aspect * (matchMedia('(min-width:701px)').matches ? .68 : 1);
+  return THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(sourceCameras[index].angle/2)/Math.max(stageAspect,.55)));
 }
 function setHoveredCard(object) {
   if (object === hoveredCard) return;
