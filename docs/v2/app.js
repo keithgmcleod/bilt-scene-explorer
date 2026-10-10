@@ -203,6 +203,19 @@ renderer.setAnimationLoop(now=>{
       ? !moving && card === hoveredCard
       : card === cameraFocusCards.get(selectedIndex);
     const isObsidian = card.userData.cameraIndex === 1 || card === cameraFocusCards.get(1);
+    if (isObsidian && active) {
+      const center = card.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(card.matrixWorld);
+      const normal = new THREE.Vector3(0,0,1).transformDirection(card.matrixWorld);
+      const toCamera = camera.position.clone().sub(center).normalize();
+      if (normal.dot(toCamera) < 0) normal.negate();
+      // Place the light opposite the viewing angle across the card normal.
+      // A small sideways offset lets the gloss skim across the surface relief.
+      const reflected = normal.clone().multiplyScalar(2 * normal.dot(toCamera)).sub(toCamera).normalize();
+      const across = new THREE.Vector3(1,0,0).transformDirection(card.matrixWorld);
+      light.position.copy(center).addScaledVector(reflected,.55).addScaledVector(across,.04);
+      light.angle = Math.PI/7;
+      light.penumbra = .8;
+    }
     const targetIntensity = active ? (isObsidian ? 4.5 : 1.8) : 0;
     // Give overview hover a soft build-up and a longer ambient tail.
     const fadeSpeed = selectedIndex === 0 ? (active ? 2.2 : 1.2) : (active ? 1.1 : 5);
