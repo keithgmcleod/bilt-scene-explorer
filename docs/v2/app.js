@@ -57,6 +57,7 @@ const pickPointer = new THREE.Vector2();
 const cardHitboxes = [];
 const cardSpotlights = [];
 const cameraFocusCards = new Map();
+let overviewSpotlight = null;
 let hoveredCard = null;
 let needsHoverCheck = false;
 let selectedIndex = 0;
@@ -182,6 +183,11 @@ renderer.setAnimationLoop(now=>{
     light.intensity = THREE.MathUtils.lerp(light.intensity, targetIntensity, 1 - Math.exp(-fadeSpeed * dt));
     if (!active && light.intensity < .001) light.intensity = 0;
   }
+  if (overviewSpotlight) {
+    const targetIntensity = selectedIndex === 0 ? 1.2 : 0;
+    overviewSpotlight.intensity = THREE.MathUtils.lerp(overviewSpotlight.intensity, targetIntensity, 1 - Math.exp(-2.2 * dt));
+    if (targetIntensity === 0 && overviewSpotlight.intensity < .001) overviewSpotlight.intensity = 0;
+  }
   renderer.render(scene,camera);
 });
 async function loadScene(){
@@ -268,6 +274,18 @@ async function loadScene(){
       hitbox.userData.card = object;
       cardHitboxes.push(hitbox);
     });
+    // A broad light above and behind the three overview cards stays on without hover.
+    const overviewBounds = new THREE.Box3();
+    for (const {card} of cardSpotlights) {
+      if (card.userData.cameraIndex !== undefined) overviewBounds.expandByObject(card);
+    }
+    const overviewCenter = overviewBounds.getCenter(new THREE.Vector3());
+    const behind = overviewCenter.clone().sub(views[0].position).setY(0).normalize();
+    overviewSpotlight = new THREE.SpotLight(0xffffff, 1.2, 3, Math.PI/4, .8, 2);
+    overviewSpotlight.name = 'Overview overhead back spotlight';
+    overviewSpotlight.position.copy(overviewCenter).addScaledVector(behind,.25).add(new THREE.Vector3(0,.6,0));
+    overviewSpotlight.target.position.copy(overviewCenter);
+    scene.add(overviewSpotlight,overviewSpotlight.target);
     // Isolated cameras can show separate copies of the overview cards.
     views.slice(1).forEach((view, offset) => {
       const index = offset + 1;
