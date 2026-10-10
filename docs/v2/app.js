@@ -203,7 +203,7 @@ renderer.setAnimationLoop(now=>{
       ? !moving && card === hoveredCard
       : card === cameraFocusCards.get(selectedIndex);
     const isObsidian = card.userData.cameraIndex === 1 || card === cameraFocusCards.get(1);
-    if (isObsidian && active) {
+    if (isObsidian) {
       const center = card.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(card.matrixWorld);
       const normal = new THREE.Vector3(0,0,1).transformDirection(card.matrixWorld);
       const toCamera = camera.position.clone().sub(center).normalize();
@@ -216,11 +216,11 @@ renderer.setAnimationLoop(now=>{
       light.angle = Math.PI/7;
       light.penumbra = .8;
     }
-    const targetIntensity = active ? (isObsidian ? .9 : 1.8) : 0;
+    const targetIntensity = isObsidian ? (active ? .35 : .035) : (active ? 1.8 : 0);
     // Give overview hover a soft build-up and a longer ambient tail.
     const fadeSpeed = selectedIndex === 0 ? (active ? 2.2 : 1.2) : (active ? 1.1 : 5);
     light.intensity = THREE.MathUtils.lerp(light.intensity, targetIntensity, 1 - Math.exp(-fadeSpeed * dt));
-    if (!active && light.intensity < .001) light.intensity = 0;
+    if (targetIntensity === 0 && light.intensity < .001) light.intensity = 0;
   }
   if (overviewSpotlight) {
     const targetIntensity = selectedIndex === 0 ? 1.2 : 0;
