@@ -319,6 +319,42 @@ async function loadScene(){
       const focus = raycaster.intersectObjects(cardHitboxes, false)[0]?.object.userData.card;
       cameraFocusCards.set(index, focus || cardSpotlights.find(({card}) => card.userData.cameraIndex === index)?.card);
     });
+    loadingText.textContent = 'Loading the Obsidian card…';
+    const obsidianParts = await Promise.all([1,2].map(async part => {
+      const response = await fetch('./assets/obsidian-2k.part'+part+'.gz');
+      if (!response.ok) throw new Error('Obsidian model request failed: '+response.status);
+      return response.arrayBuffer();
+    }));
+    const obsidianBytes = await new Response(new Blob(obsidianParts).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    const obsidianAsset = await new GLTFLoader().parseAsync(obsidianBytes,new URL('./assets/',location.href).href);
+    obsidianAsset.scene.updateMatrixWorld(true);
+    const obsidianBounds = new THREE.Box3().setFromObject(obsidianAsset.scene);
+    const obsidianCenter = obsidianBounds.getCenter(new THREE.Vector3());
+    const obsidianSize = obsidianBounds.getSize(new THREE.Vector3());
+    const obsidianCards = new Set([cardSpotlights.find(({card}) => card.userData.cameraIndex === 1)?.card,cameraFocusCards.get(1)]);
+    for (const originalCard of obsidianCards) {
+      if (!originalCard) continue;
+      const replacement = new THREE.Group();
+      const model = obsidianAsset.scene.clone(true);
+      model.position.sub(obsidianCenter);
+      model.traverse(part => {
+        if (!part.isMesh) return;
+        // Preserve the model's authored PBR textures and parameters.
+        const materials = Array.isArray(part.material) ? part.material : [part.material];
+        materials.forEach(material => {
+          material.envMap = highlightEnvironment;
+          material.envMapIntensity = .12;
+          material.envMapRotation = new THREE.Euler(0,-Math.PI/2,0);
+          material.needsUpdate = true;
+        });
+      });
+      replacement.add(model);
+      const originalBounds = originalCard.geometry.boundingBox;
+      replacement.position.copy(originalBounds.getCenter(new THREE.Vector3()));
+      replacement.scale.setScalar(originalBounds.getSize(new THREE.Vector3()).x / obsidianSize.x);
+      originalCard.material.visible = false;
+      originalCard.add(replacement);
+    }
     ready=true;cards.forEach(card=>card.disabled=false);loading.hidden=true;
     overviewButton.disabled = false;
     status.textContent='Viewing Camera.001';
