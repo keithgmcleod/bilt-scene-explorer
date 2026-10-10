@@ -18,9 +18,9 @@ const cardCameraMap = new Map([['BLUE002',1],['BLUE001',2],['BLUE003',3]]);
 const normalizeName = name => name.toUpperCase().replace(/[._]/g,'');
 const overviewButton = document.querySelector('#overview');
 const cardInformation = [null,
-  {name:'BILT Obsidian',description:'Discover BILT Obsidian from a closer perspective.'},
-  {name:'BILT Palladium',description:'Discover BILT Palladium from a closer perspective.'},
-  {name:'BILT Blue',description:'Discover BILT Blue from a closer perspective.'}
+  {name:'BILT Obsidian',tier:'obsidian',description:'Make more of dining, groceries, and travel.',fee:'$95',bonus:'$200 BILT Cash',bonusNote:'Welcome bonus. Terms apply.',earnings:[['BILT dining partners','Up to 6X'],['Dining or grocery¹','3X'],['BILT Travel hotels / flights','4X / 3X'],['Lyft / other travel','3X / 2X'],['Other purchases','1X']],benefits:['$100 annual hotel credit²','Trip delay protection','No foreign transaction fees']},
+  {name:'BILT Palladium',tier:'palladium',description:'Premium rewards for everyday spending and travel.',fee:'$495',bonus:'50,000 points + Gold Status',bonusNote:'Spend $4,000 in 90 days, excluding rent and mortgage. Plus $300 welcome BILT Cash. Terms apply.',earnings:[['BILT dining partners','Up to 5X'],['BILT Travel hotels / flights','4X / 3X'],['Lyft','4X'],['Other purchases','2X']],benefits:['$400 annual hotel credit²','$200 annual BILT Cash','Priority Pass membership']},
+  {name:'BILT Blue',tier:'blue',description:'Everyday rewards without an annual fee.',fee:'$0',bonus:'$100 BILT Cash',bonusNote:'Welcome bonus. Terms apply.',earnings:[['BILT dining partners','Up to 4X'],['BILT Travel hotels / flights','3X / 2X'],['Lyft','3X'],['Other purchases','1X']],benefits:['No foreign transaction fees','Cell phone protection']}
 ];
 function updateCardInformation(index) {
   const information = cardInformation[index];
@@ -29,6 +29,25 @@ function updateCardInformation(index) {
   if (information) {
     document.querySelector('#card-title').textContent = information.name;
     document.querySelector('#card-description').textContent = information.description;
+    document.querySelector('#card-fee').textContent = information.fee;
+    document.querySelector('#card-bonus').textContent = information.bonus;
+    document.querySelector('#bonus-note').textContent = information.bonusNote;
+    const earnings = document.querySelector('#card-earnings');
+    earnings.replaceChildren(...information.earnings.map(([label,value]) => {
+      const row = document.createElement('div'); row.className = 'earning-row';
+      const text = document.createElement('span'); text.textContent = label;
+      const rate = document.createElement('strong'); rate.textContent = value;
+      row.append(text,rate); return row;
+    }));
+    document.querySelector('#card-benefits').replaceChildren(...information.benefits.map(text => {
+      const item = document.createElement('li'); item.textContent = text; return item;
+    }));
+    document.querySelector('#card-apply').href = `https://www.bilt.com/card/application?tier=${information.tier}`;
+    document.querySelector('#card-guide').href = `https://www.biltrewards.com/terms/${information.tier}-card-guide-to-benefits`;
+    document.querySelector('#card-footnotes').textContent = information.tier === 'obsidian'
+      ? '¹ Choose dining or grocery; grocery capped at $25,000/year. ² Two $50 credits for qualifying BILT Travel hotel bookings.'
+      : information.tier === 'palladium' ? '² Two $200 credits for qualifying BILT Travel hotel bookings.' : '';
+    document.querySelector('#card-info').scrollTop = 0;
   }
 }
 // Blender Z-up to the glTF export's Y-up. Preserve world rotation and discard camera object scale.
