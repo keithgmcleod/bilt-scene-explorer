@@ -248,7 +248,7 @@ async function loadScene(){
           name:'EDGE BLUE', color:new THREE.Color(.8,.8,.8),
           metalness:1, roughness:.318605095, clearcoat:1,
           clearcoatRoughness:0, ior:1.5, side:THREE.DoubleSide,
-          envMap:highlightEnvironment, envMapIntensity:.12,
+          envMap:highlightEnvironment, envMapIntensity:.3,
           envMapRotation:new THREE.Euler(0,-Math.PI/2,0)
         });
       } else if (/^(PLANE|CUBE)[0-9]*$/.test(normalizeName(object.name))) {
@@ -343,7 +343,7 @@ async function loadScene(){
         const materials = Array.isArray(part.material) ? part.material : [part.material];
         materials.forEach(material => {
           material.envMap = highlightEnvironment;
-          material.envMapIntensity = .12;
+          material.envMapIntensity = .3;
           material.envMapRotation = new THREE.Euler(0,-Math.PI/2,0);
           material.needsUpdate = true;
         });
