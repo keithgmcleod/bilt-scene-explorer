@@ -225,7 +225,7 @@ renderer.setAnimationLoop(now=>{
       const up = new THREE.Vector3(0,1,0).transformDirection(card.matrixWorld);
       light.position.copy(basePosition).addScaledVector(across,lightPointer.x * .08).addScaledVector(up,-lightPointer.y * .06);
     }
-    const targetIntensity = isObsidian ? (active ? .88 : .088) : (active ? 1.8 : 0);
+    const targetIntensity = isObsidian ? (active ? .968 : .0968) : (active ? 1.98 : 0);
     // Give overview hover a soft build-up and a longer ambient tail.
     const fadeSpeed = selectedIndex === 0 ? (active ? 2.2 : 1.2) : (active ? 1.1 : 5);
     light.intensity = THREE.MathUtils.lerp(light.intensity, targetIntensity, 1 - Math.exp(-fadeSpeed * dt));
@@ -299,7 +299,7 @@ async function loadScene(){
       object.geometry.computeBoundingBox();
       const center = object.geometry.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(object.matrixWorld);
       const direction = views[0].position.clone().sub(center).normalize();
-      const spotlight = new THREE.SpotLight(0xffffff, 0, 3, Math.PI/10, .5, 2);
+      const spotlight = new THREE.SpotLight(0xffffff, 0, 3, Math.PI/10 * .85, .5, 2);
       spotlight.name = 'Card spotlight ' + object.name;
       spotlight.position.copy(center).addScaledVector(direction,.7).add(new THREE.Vector3(.15,.35,0));
       spotlight.target.position.copy(center);
@@ -384,7 +384,7 @@ async function loadScene(){
     for (const entry of cardSpotlights) {
       if (!obsidianCards.has(entry.card)) continue;
       scene.remove(entry.light, entry.light.target);
-      entry.light = new THREE.RectAreaLight(0xffffff, .088, .3, .1875);
+      entry.light = new THREE.RectAreaLight(0xffffff, .0968, .255, .159375);
       entry.light.name = 'Obsidian softbox';
       scene.add(entry.light);
     }
