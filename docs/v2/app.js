@@ -70,6 +70,7 @@ const basePosition = camera.position.clone();
 const baseQuaternion = camera.quaternion.clone();
 const pointerTarget = new THREE.Vector2();
 const pointer = new THREE.Vector2();
+const lightPointer = new THREE.Vector2();
 const tiltQuaternion = new THREE.Quaternion();
 const tiltEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 const parallaxOffset = new THREE.Vector3();
@@ -200,7 +201,8 @@ renderer.setAnimationLoop(now=>{
     needsHoverCheck = false;
   }
   // Overview lights only the hovered mesh; close-ups light only their selected card.
-  for (const {card,light} of cardSpotlights) {
+  lightPointer.lerp(pointerTarget, 1 - Math.exp(-3 * dt));
+  for (const {card,light,basePosition} of cardSpotlights) {
     const active = selectedIndex === 0
       ? !moving && card === hoveredCard
       : card === cameraFocusCards.get(selectedIndex);
@@ -214,8 +216,14 @@ renderer.setAnimationLoop(now=>{
       // A small sideways offset lets the gloss skim across the surface relief.
       const reflected = normal.clone().multiplyScalar(2 * normal.dot(toCamera)).sub(toCamera).normalize();
       const across = new THREE.Vector3(1,0,0).transformDirection(card.matrixWorld);
-      light.position.copy(center).addScaledVector(reflected,.55).addScaledVector(across,.04);
+      const up = new THREE.Vector3(0,1,0).transformDirection(card.matrixWorld);
+      light.position.copy(center).addScaledVector(reflected,.55).addScaledVector(across,.04 + lightPointer.x * .1).addScaledVector(up,-lightPointer.y * .07);
       light.lookAt(center);
+    }
+    if (!isObsidian && basePosition) {
+      const across = new THREE.Vector3(1,0,0).transformDirection(card.matrixWorld);
+      const up = new THREE.Vector3(0,1,0).transformDirection(card.matrixWorld);
+      light.position.copy(basePosition).addScaledVector(across,lightPointer.x * .08).addScaledVector(up,-lightPointer.y * .06);
     }
     const targetIntensity = isObsidian ? (active ? .88 : .088) : (active ? 1.8 : 0);
     // Give overview hover a soft build-up and a longer ambient tail.
@@ -296,7 +304,7 @@ async function loadScene(){
       spotlight.position.copy(center).addScaledVector(direction,.7).add(new THREE.Vector3(.15,.35,0));
       spotlight.target.position.copy(center);
       scene.add(spotlight,spotlight.target);
-      cardSpotlights.push({card:object,light:spotlight});
+      cardSpotlights.push({card:object,light:spotlight,basePosition:spotlight.position.clone()});
     });
     gltf.scene.traverse(object => {
       if (!object.isMesh || !/^BLUE[0-9]*$/.test(normalizeName(object.name))) return;
