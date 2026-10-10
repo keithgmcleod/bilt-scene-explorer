@@ -213,8 +213,8 @@ renderer.setAnimationLoop(now=>{
       const reflected = normal.clone().multiplyScalar(2 * normal.dot(toCamera)).sub(toCamera).normalize();
       const across = new THREE.Vector3(1,0,0).transformDirection(card.matrixWorld);
       light.position.copy(center).addScaledVector(reflected,.55).addScaledVector(across,.04);
-      light.angle = Math.PI/7;
-      light.penumbra = .8;
+      light.angle = Math.PI/4;
+      light.penumbra = 1;
     }
     const targetIntensity = isObsidian ? (active ? .35 : .035) : (active ? 1.8 : 0);
     // Give overview hover a soft build-up and a longer ambient tail.
@@ -358,6 +358,8 @@ async function loadScene(){
         materials.forEach(material => {
           material.envMap = highlightEnvironment;
           material.envMapIntensity = .3;
+          material.roughness = Math.max(material.roughness, .45);
+          if (material.clearcoat > 0) material.clearcoatRoughness = Math.max(material.clearcoatRoughness, .25);
           material.envMapRotation = new THREE.Euler(0,-Math.PI/2,0);
           material.needsUpdate = true;
         });
