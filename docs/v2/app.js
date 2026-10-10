@@ -213,7 +213,6 @@ renderer.setAnimationLoop(now=>{
       const reflected = normal.clone().multiplyScalar(2 * normal.dot(toCamera)).sub(toCamera).normalize();
       const across = new THREE.Vector3(1,0,0).transformDirection(card.matrixWorld);
       light.position.copy(center).addScaledVector(reflected,.55).addScaledVector(across,.04);
-      light.layers.set(1);
       light.angle = Math.PI/7;
       light.penumbra = .8;
     }
@@ -354,7 +353,6 @@ async function loadScene(){
       model.position.sub(obsidianCenter);
       model.traverse(part => {
         if (!part.isMesh) return;
-        part.layers.enable(1);
         // Preserve the model's authored PBR textures and parameters.
         const materials = Array.isArray(part.material) ? part.material : [part.material];
         materials.forEach(material => {
